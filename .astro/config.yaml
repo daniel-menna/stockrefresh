@@ -1,0 +1,5 @@
+postgres:
+    port: 5434
+
+project:
+    name: stock-refresh
