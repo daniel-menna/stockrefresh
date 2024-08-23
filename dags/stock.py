@@ -10,7 +10,6 @@ from cosmos.airflow.task_group import DbtTaskGroup
 from cosmos.constants import LoadMode
 from cosmos.config import ProjectConfig, RenderConfig
 from airflow.models.baseoperator import chain
-from airflow.decorators import dag, task
 from datetime import datetime
 import sys
 
@@ -29,7 +28,7 @@ def stock_dag():
         """
         Função para instalar o pacote yfinance no ambiente virtual atual.
         """
-        import subprocess  # Certifique-se de que o subprocess seja importado aqui
+        import subprocess
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yfinance"])
 
     @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python')
@@ -37,21 +36,35 @@ def stock_dag():
         import yfinance as yf
         ticker = yf.Ticker(simbolo)
         dados = ticker.history(period=periodo, interval=intervalo)[['Close']]
+        
+        # Extraindo campos específicos do dicionário `info`
+        campos_infos = ['city', 'state', 'zip', 'country', 'industry']
+        infos = {campo: ticker.info.get(campo, None) for campo in campos_infos}
+        
         dados['simbolo'] = simbolo
-        return dados
+        infos['simbolo'] = simbolo
+        return dados, infos
     
     @task()
-    def concatena_dados(todos_dados):
+    def concatena_dados_preco(todos_dados):
         import pandas as pd
-        return pd.concat(todos_dados)
+        # Extraindo apenas os dados de preços
+        dados_preco = [dados for dados, _ in todos_dados]
+        return pd.concat(dados_preco)
 
     @task()
-    def salvar_dados_csv(dados_concatenados):
+    def concatena_dados_infos(todos_dados):
         import pandas as pd
-        new_file_path = 'include/datasets/stocks.csv'
-        # dados_concatenados['Date'] = pd.to_datetime(dados_concatenados['Date'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
-        dados_concatenados.to_csv(new_file_path, index=True)
+        # Extraindo apenas as informações
+        dados_infos = [infos for _, infos in todos_dados]
+        return pd.DataFrame(dados_infos)  # Transformando a lista de dicionários em um DataFrame
 
+    @task()
+    def salvar_dados_csv(dados_concatenados, file_path):
+        # Salvando dados no formato CSV
+        dados_concatenados.to_csv(file_path, index=file_path == 'include/datasets/stocks.csv')
+
+    # Operador de Upload para GCS
     upload_stockprice_csv_to_gcs = LocalFilesystemToGCSOperator(
         task_id='upload_stockprice_csv_to_gcs',
         src='include/datasets/stocks.csv',
@@ -95,10 +108,12 @@ def stock_dag():
     install_yfinance_task >> dados_commodities
 
     # Concatenar os resultados
-    dados_concatenados = concatena_dados(dados_commodities)
+    dados_concatenados_preco = concatena_dados_preco(dados_commodities)
+    dados_concatenados_infos = concatena_dados_infos(dados_commodities)
     
     # Salvar os dados no CSV
-    salvar_dados_csv_task = salvar_dados_csv(dados_concatenados)
+    salvar_dados_csv_task = salvar_dados_csv(dados_concatenados_preco, 'include/datasets/stocks.csv')
+    salvar_infos_csv_task = salvar_dados_csv(dados_concatenados_infos, 'include/datasets/stocks_info.csv')
 
     # upload_stockprice_csv_to_gcs seja executada após salvar_dados_csv_task
     salvar_dados_csv_task >> upload_stockprice_csv_to_gcs
