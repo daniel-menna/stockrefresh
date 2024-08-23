@@ -1,7 +1,7 @@
-name: 'retail'
+name: 'stock'
 
-profile: 'retail'
+profile: 'stock'
 
 models:
-  retail:
+  stock:
     materialized: table

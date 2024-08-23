@@ -1,9 +1,8 @@
 version: 2
 
 sources:
-  - name: retail
-    database: 'retaildatapipeline'
+  - name: stockprice-433416
+    database: 'stock'
 
     tables:
-        - name: raw_invoices
-        - name: raw_country
+        - name: raw_stocks
