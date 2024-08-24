@@ -7,7 +7,7 @@ data_source retail:
     - https://www.googleapis.com/auth/cloud-platform
     - https://www.googleapis.com/auth/drive
     project_id: '${GCP_PROJECT_ID}'
-    dataset: retail
+    dataset: stock
 
 soda_cloud:
   host: cloud.us.soda.io

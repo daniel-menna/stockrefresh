@@ -1,4 +1,12 @@
-city,state,zip,country,phone,website,industry,simbolo
-Cupertino,CA,95014,United States,408 996 1010,https://www.apple.com,Consumer Electronics,AAPL
-Mountain View,CA,94043,United States,650 253 0000,https://abc.xyz,Internet Content & Information,GOOGL
-Seattle,WA,98109-5210,United States,206 266 1000,https://www.aboutamazon.com,Internet Retail,AMZN
+city,state,zip,country,industry,enterpriseValue,simbolo
+Cupertino,CA,95014,United States,Consumer Electronics,3488409452544.0,AAPL
+Mountain View,CA,94043,United States,Internet Content & Information,1966776254464.0,GOOGL
+Seattle,WA,98109-5210,United States,Internet Retail,1926885146624.0,AMZN
+Menlo Park,CA,94025,United States,Internet Content & Information,1315654205440.0,META
+Redmond,WA,98052-6399,United States,Software - Infrastructure,3120336994304.0,MSFT
+Santa Clara,CA,95051,United States,Semiconductors,3162301005824.0,NVDA
+Round Rock,TX,78682,United States,Computer Hardware,99776159744.0,DELL
+Walldorf,,69190,Germany,Software - Application,252982394880.0,SAP
+,,,,,,SSFO
+Austin,TX,78741,United States,Software - Infrastructure,467876151296.0,ORCL
+Armonk,NY,10504,United States,Information Technology Services,226862153728.0,IBM

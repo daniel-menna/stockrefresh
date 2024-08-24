@@ -1,0 +1,12 @@
+checks for raw_companies:
+  - schema:
+      fail:
+        when required column missing: [city,state,zip,country,industry,enterpriseValue,simbolo]
+        when wrong column type:
+          city: string
+          state: string
+          zip: string
+          country: string
+          industry: string
+          enterpriseValue: float64
+          simbolo: string

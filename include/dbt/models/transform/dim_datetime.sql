@@ -1,14 +1,15 @@
--- Create a CTE to extract date and time components as strings
+-- Crie uma CTE para extrair componentes de data e hora como strings
 WITH datetime_cte AS (
   SELECT DISTINCT
-    CAST(InvoiceDate AS STRING) AS datetime_id,
-    FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', InvoiceDate) AS date_part
-  FROM {{ source('retail', 'raw_invoices') }}
-  WHERE InvoiceDate IS NOT NULL
+    CAST(Date AS STRING) AS datetime_id,
+    FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', Date) AS date_part
+  FROM {{ source('stock', 'raw_stocks') }}
+  WHERE Date IS NOT NULL
 )
+
 SELECT
   datetime_id,
-  CAST(date_part as datetime) AS datetime,
+  CAST(date_part AS DATETIME) AS datetime,
   SUBSTR(date_part, 9, 2) AS day,
   SUBSTR(date_part, 6, 2) AS month,
   SUBSTR(date_part, 1, 4) AS year,
@@ -16,3 +17,8 @@ SELECT
   SUBSTR(date_part, 15, 2) AS minute,
   EXTRACT(DAYOFWEEK FROM TIMESTAMP(date_part)) AS weekday
 FROM datetime_cte
+
+{% if is_incremental() %}
+  -- Apenas atualizar dados novos ou modificados
+  WHERE datetime_id NOT IN (SELECT DISTINCT datetime_id FROM {{ this }})
+{% endif %}

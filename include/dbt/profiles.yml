@@ -1,4 +1,4 @@
-retail:
+stock:
  target: dev
  outputs:
   dev:

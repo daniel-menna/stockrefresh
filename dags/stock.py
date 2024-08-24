@@ -21,7 +21,7 @@ import sys
 )
 def stock_dag():
     bucket_name = 'stockprice-bucket'
-    commodities = ['AAPL', 'GOOGL', 'AMZN']  # Defina os símbolos desejados aqui
+    commodities = ['AAPL', 'GOOGL', 'AMZN', 'META', 'MSFT', 'NVDA', 'DELL', 'SAP', 'CRM', 'ORCL', 'IBM']  # Defina os símbolos desejados aqui
 
     @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python')
     def install_yfinance():
@@ -32,13 +32,13 @@ def stock_dag():
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yfinance"])
 
     @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python')
-    def buscar_dados_commodities(simbolo, periodo='5d', intervalo='1d'):
+    def buscar_dados_commodities(simbolo, periodo='1y', intervalo='1d'):
         import yfinance as yf
         ticker = yf.Ticker(simbolo)
-        dados = ticker.history(period=periodo, interval=intervalo)[['Close']]
+        dados = ticker.history(period=periodo, interval=intervalo)[['Open','Close']]
         
         # Extraindo campos específicos do dicionário `info`
-        campos_infos = ['city', 'state', 'zip', 'country', 'industry']
+        campos_infos = ['city', 'state', 'zip', 'country', 'industry', 'enterpriseValue']
         infos = {campo: ticker.info.get(campo, None) for campo in campos_infos}
         
         dados['simbolo'] = simbolo
@@ -74,13 +74,23 @@ def stock_dag():
         mime_type='text/csv',
     )
 
+    # Operador de Upload para GCS
+    upload_stockinfo_csv_to_gcs = LocalFilesystemToGCSOperator(
+        task_id='upload_stockinfo_csv_to_gcs',
+        src='include/datasets/stocks_info.csv',
+        dst='raw/stocks_info.csv',
+        bucket=bucket_name,
+        gcp_conn_id='gcp',
+        mime_type='text/csv',
+    )
+
     create_stock_dataset = BigQueryCreateEmptyDatasetOperator(
         task_id='create_stock_dataset',
         dataset_id='stock',
         gcp_conn_id='gcp',
     )
 
-    retail_gcs_to_raw = aql.load_file(
+    stocks_gcs_to_raw = aql.load_file(
         task_id='stock_gcs_to_raw',
         input_file=File(
             f'gs://{bucket_name}/raw/stocks.csv',
@@ -97,6 +107,62 @@ def stock_dag():
             "encoding": "ISO_8859_1",
         }
     )
+
+    companies_gcs_to_raw = aql.load_file(
+        task_id='companies_gcs_to_raw',
+        input_file=File(
+            f'gs://{bucket_name}/raw/stocks_info.csv',
+            conn_id='gcp',
+            filetype=FileType.CSV,
+        ),
+        output_table=Table(
+            name='raw_companies',
+            conn_id='gcp',
+            metadata=Metadata(schema='stock')
+        ),
+        use_native_support=True,
+        native_support_kwargs={
+            "encoding": "ISO_8859_1",
+        }
+    )
+
+    @task.external_python(python='/usr/local/airflow/soda_venv/bin/python')
+    def check_load(scan_name='check_load', checks_subpath='sources'):
+        from include.soda.check_function import check
+
+        return check(scan_name, checks_subpath)
+    
+    transform = DbtTaskGroup(
+        group_id='transform',
+        project_config=DBT_PROJECT_CONFIG,
+        profile_config=DBT_CONFIG,
+        render_config=RenderConfig(
+            load_method=LoadMode.DBT_LS,
+            select=['path:models/transform']
+        )
+    )
+
+    @task.external_python(python='/usr/local/airflow/soda_venv/bin/python')
+    def check_transform(scan_name='check_transform', checks_subpath='transform'):
+        from include.soda.check_function import check
+
+        return check(scan_name, checks_subpath)
+    
+    report = DbtTaskGroup(
+        group_id='report',
+        project_config=DBT_PROJECT_CONFIG,
+        profile_config=DBT_CONFIG,
+        render_config=RenderConfig(
+            load_method=LoadMode.DBT_LS,
+            select=['path:models/report']
+        )
+    )
+
+    @task.external_python(python='/usr/local/airflow/soda_venv/bin/python')
+    def check_report(scan_name='check_report', checks_subpath='report'):
+        from include.soda.check_function import check
+
+        return check(scan_name, checks_subpath)
 
     # Instalar yfinance
     install_yfinance_task = install_yfinance()
@@ -119,9 +185,18 @@ def stock_dag():
     salvar_dados_csv_task >> upload_stockprice_csv_to_gcs
 
     # Create stock dataset
-    create_stock_dataset >> retail_gcs_to_raw
+    create_stock_dataset >> stocks_gcs_to_raw
+    create_stock_dataset >> companies_gcs_to_raw
 
     # Insert raw data in the dataset
-    upload_stockprice_csv_to_gcs >> retail_gcs_to_raw
+    upload_stockprice_csv_to_gcs >> stocks_gcs_to_raw
+    upload_stockinfo_csv_to_gcs >> companies_gcs_to_raw
+
+    # Check data quality after loading raw layer
+    check_load >> upload_stockprice_csv_to_gcs
+    check_load >> upload_stockinfo_csv_to_gcs
+
+    # Transform data to ingest in transform layer
+    check_transform >> transform >> check_load 
 
 stock_dag()

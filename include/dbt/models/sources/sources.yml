@@ -6,3 +6,4 @@ sources:
 
     tables:
         - name: raw_stocks
+        - name: raw_companies
