@@ -5,7 +5,7 @@ stock:
     type: bigquery
     method: service-account
     keyfile: /usr/local/airflow/include/gcp/service_account.json
-    project: 'stockprice-433416'
+    project: 'stockprice'
     dataset: stock
     threads: 1
     timeout_seconds: 300

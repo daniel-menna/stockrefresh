@@ -3,8 +3,5 @@ name: 'stock'
 profile: 'stock'
 
 models:
-  transform:
-    dim_datetime:
-      +materialized: incremental
-    fct_stocks:
-      +materialized: incremental
+  stock:
+    materialized: table

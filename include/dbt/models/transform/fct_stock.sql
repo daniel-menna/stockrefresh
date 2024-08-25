@@ -4,7 +4,7 @@ WITH fct_stock_cte AS (
         simbolo AS company_id,
         CAST(Date AS STRING) AS datetime_id,
         Close as value
-    FROM {{ source('retail', 'raw_stocks') }}
+    FROM {{ source('stock', 'raw_stocks') }}
 )
 
 SELECT
@@ -15,9 +15,3 @@ FROM fct_stock_cte fs
 INNER JOIN {{ ref('dim_datetime') }} dt ON fs.datetime_id = dt.datetime_id
 INNER JOIN {{ ref('dim_customer') }} dc ON fs.company_id = dc.company_id
 
-{% if is_incremental() %}
-  -- Filtrar apenas linhas novas ou modificadas
-  WHERE (dc.company_id, fs.value) NOT IN (
-    SELECT company_id, value FROM {{ this }}
-  )
-{% endif %}

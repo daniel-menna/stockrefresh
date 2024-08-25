@@ -18,7 +18,3 @@ SELECT
   EXTRACT(DAYOFWEEK FROM TIMESTAMP(date_part)) AS weekday
 FROM datetime_cte
 
-{% if is_incremental() %}
-  -- Apenas atualizar dados novos ou modificados
-  WHERE datetime_id NOT IN (SELECT DISTINCT datetime_id FROM {{ this }})
-{% endif %}
