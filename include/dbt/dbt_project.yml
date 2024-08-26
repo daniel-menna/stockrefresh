@@ -1,6 +1,6 @@
 name: 'stock'
 
-profile: 'stock'
+profile: 'stockprice-433416'
 
 models:
   stock:

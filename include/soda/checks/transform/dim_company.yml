@@ -8,7 +8,7 @@ checks for dim_customer:
 	        zip_code: string
 		      country: string
 		      industry: string
-		      valuation: float64
+		      valuation: int64
   - duplicate_count(company_id) = 0:
       name: All companies are unique
   - missing_count(company_id) = 0:

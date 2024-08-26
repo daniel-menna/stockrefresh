@@ -8,5 +8,5 @@ checks for raw_companies:
           zip: string
           country: string
           industry: string
-          enterpriseValue: float64
+          enterpriseValue: int64
           simbolo: string

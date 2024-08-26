@@ -1,11 +1,11 @@
-stock:
+stockprice-433416:
  target: dev
  outputs:
   dev:
     type: bigquery
     method: service-account
     keyfile: /usr/local/airflow/include/gcp/service_account.json
-    project: 'stockprice'
+    project: 'stockprice-433416'
     dataset: stock
     threads: 1
     timeout_seconds: 300

@@ -21,13 +21,10 @@ import sys
 )
 def stock_dag():
     bucket_name = 'stockprice-bucket'
-    commodities = ['AAPL', 'GOOGL', 'AMZN', 'META', 'MSFT', 'NVDA', 'DELL', 'SAP', 'CRM', 'ORCL', 'IBM']  # Defina os símbolos desejados aqui
+    commodities = ['AAPL', 'GOOGL', 'AMZN', 'META', 'MSFT', 'NVDA', 'DELL', 'SAP', 'CRM', 'ORCL', 'IBM']
 
     @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python')
     def install_yfinance():
-        """
-        Função para instalar o pacote yfinance no ambiente virtual atual.
-        """
         import subprocess
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yfinance"])
 
@@ -36,11 +33,8 @@ def stock_dag():
         import yfinance as yf
         ticker = yf.Ticker(simbolo)
         dados = ticker.history(period=periodo, interval=intervalo)[['Open','Close']]
-        
-        # Extraindo campos específicos do dicionário `info`
         campos_infos = ['city', 'state', 'zip', 'country', 'industry', 'enterpriseValue']
         infos = {campo: ticker.info.get(campo, None) for campo in campos_infos}
-        
         dados['simbolo'] = simbolo
         infos['simbolo'] = simbolo
         return dados, infos
@@ -48,23 +42,22 @@ def stock_dag():
     @task()
     def concatena_dados_preco(todos_dados):
         import pandas as pd
-        # Extraindo apenas os dados de preços
         dados_preco = [dados for dados, _ in todos_dados]
         return pd.concat(dados_preco)
 
     @task()
     def concatena_dados_infos(todos_dados):
         import pandas as pd
-        # Extraindo apenas as informações
         dados_infos = [infos for _, infos in todos_dados]
-        return pd.DataFrame(dados_infos)  # Transformando a lista de dicionários em um DataFrame
+        return pd.DataFrame(dados_infos)
 
     @task()
     def salvar_dados_csv(dados_concatenados, file_path):
-        # Salvando dados no formato CSV
-        dados_concatenados.to_csv(file_path, index=file_path == 'include/datasets/stocks.csv')
+        if file_path == 'include/datasets/stocks_info.csv' :
+            dados_concatenados.to_csv(file_path, index=False)
+        else:
+            dados_concatenados.to_csv(file_path, index=True)
 
-    # Operador de Upload para GCS
     upload_stockprice_csv_to_gcs = LocalFilesystemToGCSOperator(
         task_id='upload_stockprice_csv_to_gcs',
         src='include/datasets/stocks.csv',
@@ -74,7 +67,6 @@ def stock_dag():
         mime_type='text/csv',
     )
 
-    # Operador de Upload para GCS
     upload_stockinfo_csv_to_gcs = LocalFilesystemToGCSOperator(
         task_id='upload_stockinfo_csv_to_gcs',
         src='include/datasets/stocks_info.csv',
@@ -118,7 +110,7 @@ def stock_dag():
         output_table=Table(
             name='raw_companies',
             conn_id='gcp',
-            metadata=Metadata(schema='stock')
+            metadata=Metadata(schema='stockprice-433416')
         ),
         use_native_support=True,
         native_support_kwargs={
@@ -129,9 +121,8 @@ def stock_dag():
     @task.external_python(python='/usr/local/airflow/soda_venv/bin/python')
     def check_load(scan_name='check_load', checks_subpath='sources'):
         from include.soda.check_function import check
-
         return check(scan_name, checks_subpath)
-    
+
     transform = DbtTaskGroup(
         group_id='transform',
         project_config=DBT_PROJECT_CONFIG,
@@ -142,35 +133,13 @@ def stock_dag():
         )
     )
 
-    @task.external_python(python='/usr/local/airflow/soda_venv/bin/python')
-    def check_transform(scan_name='check_transform', checks_subpath='transform'):
-        from include.soda.check_function import check
-
-        return check(scan_name, checks_subpath)
-    
-    report = DbtTaskGroup(
-        group_id='report',
-        project_config=DBT_PROJECT_CONFIG,
-        profile_config=DBT_CONFIG,
-        render_config=RenderConfig(
-            load_method=LoadMode.DBT_LS,
-            select=['path:models/report']
-        )
-    )
-
-    @task.external_python(python='/usr/local/airflow/soda_venv/bin/python')
-    def check_report(scan_name='check_report', checks_subpath='report'):
-        from include.soda.check_function import check
-
-        return check(scan_name, checks_subpath)
-
     # Instalar yfinance
     install_yfinance_task = install_yfinance()
 
     # Expandir a tarefa para buscar os dados de todas as commodities
     dados_commodities = buscar_dados_commodities.expand(simbolo=commodities)
 
-    # Assegurar que buscar_dados_commodities seja executada após a instalação do yfinance
+    # Definir dependências
     install_yfinance_task >> dados_commodities
 
     # Concatenar os resultados
@@ -181,22 +150,20 @@ def stock_dag():
     salvar_dados_csv_task = salvar_dados_csv(dados_concatenados_preco, 'include/datasets/stocks.csv')
     salvar_infos_csv_task = salvar_dados_csv(dados_concatenados_infos, 'include/datasets/stocks_info.csv')
 
-    # upload_stockprice_csv_to_gcs seja executada após salvar_dados_csv_task
+    # Definir dependências para upload dos arquivos CSV para o GCS
     salvar_dados_csv_task >> upload_stockprice_csv_to_gcs
+    salvar_infos_csv_task >> upload_stockinfo_csv_to_gcs
 
-    # Create stock dataset
-    create_stock_dataset >> stocks_gcs_to_raw
-    create_stock_dataset >> companies_gcs_to_raw
-
-    # Insert raw data in the dataset
+    # Cria o dataset no BigQuery e insere os dados
+    create_stock_dataset >> [stocks_gcs_to_raw, companies_gcs_to_raw]
     upload_stockprice_csv_to_gcs >> stocks_gcs_to_raw
     upload_stockinfo_csv_to_gcs >> companies_gcs_to_raw
 
-    # Check data quality after loading raw layer
-    check_load >> upload_stockprice_csv_to_gcs
-    check_load >> upload_stockinfo_csv_to_gcs
+    # Verificar qualidade dos dados após carregamento
+    check_load_task = check_load()
+    [stocks_gcs_to_raw, companies_gcs_to_raw] >> check_load_task
 
-    # Transform data to ingest in transform layer
-    check_transform >> transform >> check_load 
+    # Executar transformação
+    check_load_task >> transform
 
 stock_dag()

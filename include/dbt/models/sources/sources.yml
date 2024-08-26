@@ -1,8 +1,8 @@
 version: 2
 
 sources:
-  - name: stockprice-433416
-    database: 'stock'
+  - name: stock
+    database: 'stockprice-433416'
 
     tables:
         - name: raw_stocks
