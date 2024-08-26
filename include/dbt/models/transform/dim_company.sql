@@ -2,7 +2,8 @@
 WITH companies_cte AS (
 	SELECT DISTINCT
 	    simbolo as company_id,
-	    zip AS zip_code,
+		shortName as company_name,
+	    zip,
 		country,
 		industry,
 		enterpriseValue as valuation

@@ -3,14 +3,14 @@ WITH fct_stock_cte AS (
     SELECT
         simbolo AS company_id,
         CAST(Date AS STRING) AS datetime_id,
-        Close as value
+        Close as price
     FROM {{ source('stock', 'raw_stocks') }}
 )
 
 SELECT
     dc.company_id,
     dt.datetime_id,
-    fs.value
+    fs.price
 FROM fct_stock_cte fs
 INNER JOIN {{ ref('dim_datetime') }} dt ON fs.datetime_id = dt.datetime_id
 INNER JOIN {{ ref('dim_company') }} dc ON fs.company_id = dc.company_id

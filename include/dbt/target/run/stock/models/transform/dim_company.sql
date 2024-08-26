@@ -13,6 +13,7 @@
 WITH companies_cte AS (
 	SELECT DISTINCT
 	    simbolo as company_id,
+		shortName as company_name,
 	    zip AS zip_code,
 		country,
 		industry,

@@ -10,7 +10,7 @@ from cosmos.airflow.task_group import DbtTaskGroup
 from cosmos.constants import LoadMode
 from cosmos.config import ProjectConfig, RenderConfig
 from airflow.models.baseoperator import chain
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 
 @dag(
@@ -28,12 +28,12 @@ def stock_dag():
         import subprocess
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yfinance"])
 
-    @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python')
-    def buscar_dados_commodities(simbolo, periodo='1y', intervalo='1d'):
+    @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python', execution_timeout=timedelta(minutes=10))
+    def buscar_dados_commodities(simbolo, periodo='5d', intervalo='1d'):
         import yfinance as yf
         ticker = yf.Ticker(simbolo)
         dados = ticker.history(period=periodo, interval=intervalo)[['Open','Close']]
-        campos_infos = ['city', 'state', 'zip', 'country', 'industry', 'enterpriseValue']
+        campos_infos = ['shortName','city', 'state', 'zip', 'country', 'industry', 'enterpriseValue']
         infos = {campo: ticker.info.get(campo, None) for campo in campos_infos}
         dados['simbolo'] = simbolo
         infos['simbolo'] = simbolo
@@ -110,7 +110,7 @@ def stock_dag():
         output_table=Table(
             name='raw_companies',
             conn_id='gcp',
-            metadata=Metadata(schema='stockprice-433416')
+            metadata=Metadata(schema='stock')
         ),
         use_native_support=True,
         native_support_kwargs={
@@ -132,6 +132,22 @@ def stock_dag():
             select=['path:models/transform']
         )
     )
+
+    @task.external_python(python='/usr/local/airflow/soda_venv/bin/python')
+    def check_transform(scan_name='check_transform', checks_subpath='transform'):
+        from include.soda.check_function import check
+
+        return check(scan_name, checks_subpath)
+    
+    report = DbtTaskGroup(
+        group_id='report',
+        project_config=DBT_PROJECT_CONFIG,
+        profile_config=DBT_CONFIG,
+        render_config=RenderConfig(
+            load_method=LoadMode.DBT_LS,
+            select=['path:models/report']
+        )
+    )    
 
     # Instalar yfinance
     install_yfinance_task = install_yfinance()
@@ -165,5 +181,10 @@ def stock_dag():
 
     # Executar transformação
     check_load_task >> transform
+    check_transform_task = check_transform()
+    transform >> check_transform_task
+
+    # Criação de Data Marts
+    check_transform_task >> report
 
 stock_dag()

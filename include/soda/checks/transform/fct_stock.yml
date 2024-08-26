@@ -1,0 +1,21 @@
+checks for fct_stock:
+  # Check fails when company_id, Date, value is missing or
+  # when the data type of those columns is other than specified
+  - schema:
+      fail:
+        when required column missing: 
+          [company_id, datetime_id, price]
+        when wrong column type:
+          company_id: string
+          datetime_id: string
+          price: float64
+  # Check fails when NULL values in the column
+  - missing_count(company_id) = 0:
+      name: All stocks have a value
+  # Check fails when the value of any stocks is negative
+  - failed rows:
+      name: All stocks have a positive total amount
+      fail query: 
+        SELECT company_id, price
+        FROM fct_stock
+        WHERE price < 0

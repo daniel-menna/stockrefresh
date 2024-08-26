@@ -1,14 +1,15 @@
-checks for dim_customer:
+checks for dim_company:
   - schema:
       fail:
         when required column missing: 
-          [company_id]
+          [company_id, company_name]
         when wrong column type:
           company_id: string
-	        zip_code: string
-		      country: string
-		      industry: string
-		      valuation: int64
+          company_name: string
+          zip: string
+          country: string
+          industry: string
+          valuation: int64
   - duplicate_count(company_id) = 0:
       name: All companies are unique
   - missing_count(company_id) = 0:
