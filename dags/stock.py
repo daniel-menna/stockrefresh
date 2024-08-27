@@ -29,34 +29,34 @@ def stock_dag():
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yfinance"])
 
     @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python', execution_timeout=timedelta(minutes=10))
-    def buscar_dados_commodities(simbolo, periodo='5d', intervalo='1d'):
+    def fetch_commodities_data(symbol, period='30d', interval='1d'):
         import yfinance as yf
-        ticker = yf.Ticker(simbolo)
-        dados = ticker.history(period=periodo, interval=intervalo)[['Open','Close']]
-        campos_infos = ['shortName','city', 'state', 'zip', 'country', 'industry', 'enterpriseValue']
-        infos = {campo: ticker.info.get(campo, None) for campo in campos_infos}
-        dados['simbolo'] = simbolo
-        infos['simbolo'] = simbolo
-        return dados, infos
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(period=period, interval=interval)[['Open', 'Close']]
+        info_fields = ['shortName', 'city', 'state', 'zip', 'country', 'industry', 'enterpriseValue']
+        info = {field: ticker.info.get(field, None) for field in info_fields}
+        data['symbol'] = symbol
+        info['symbol'] = symbol
+        return data, info
     
     @task()
-    def concatena_dados_preco(todos_dados):
+    def concatenate_price_data(all_data):
         import pandas as pd
-        dados_preco = [dados for dados, _ in todos_dados]
-        return pd.concat(dados_preco)
+        price_data = [data for data, _ in all_data]
+        return pd.concat(price_data)
 
     @task()
-    def concatena_dados_infos(todos_dados):
+    def concatenate_info_data(all_data):
         import pandas as pd
-        dados_infos = [infos for _, infos in todos_dados]
-        return pd.DataFrame(dados_infos)
+        info_data = [info for _, info in all_data]
+        return pd.DataFrame(info_data)
 
     @task()
-    def salvar_dados_csv(dados_concatenados, file_path):
-        if file_path == 'include/datasets/stocks_info.csv' :
-            dados_concatenados.to_csv(file_path, index=False)
+    def save_data_to_csv(concatenated_data, file_path):
+        if file_path == 'include/datasets/stocks_info.csv':
+            concatenated_data.to_csv(file_path, index=False)
         else:
-            dados_concatenados.to_csv(file_path, index=True)
+            concatenated_data.to_csv(file_path, index=True)
 
     upload_stockprice_csv_to_gcs = LocalFilesystemToGCSOperator(
         task_id='upload_stockprice_csv_to_gcs',
@@ -149,42 +149,42 @@ def stock_dag():
         )
     )    
 
-    # Instalar yfinance
+    # Install yfinance
     install_yfinance_task = install_yfinance()
 
-    # Expandir a tarefa para buscar os dados de todas as commodities
-    dados_commodities = buscar_dados_commodities.expand(simbolo=commodities)
+    # Expand the task to fetch data for all commodities
+    commodity_data = fetch_commodities_data.expand(symbol=commodities)
 
-    # Definir dependências
-    install_yfinance_task >> dados_commodities
+    # Define dependencies
+    install_yfinance_task >> commodity_data
 
-    # Concatenar os resultados
-    dados_concatenados_preco = concatena_dados_preco(dados_commodities)
-    dados_concatenados_infos = concatena_dados_infos(dados_commodities)
+    # Concatenate the results
+    concatenated_price_data = concatenate_price_data(commodity_data)
+    concatenated_info_data = concatenate_info_data(commodity_data)
     
-    # Salvar os dados no CSV
-    salvar_dados_csv_task = salvar_dados_csv(dados_concatenados_preco, 'include/datasets/stocks.csv')
-    salvar_infos_csv_task = salvar_dados_csv(dados_concatenados_infos, 'include/datasets/stocks_info.csv')
+    # Save the data to CSV
+    save_price_data_csv_task = save_data_to_csv(concatenated_price_data, 'include/datasets/stocks.csv')
+    save_info_data_csv_task = save_data_to_csv(concatenated_info_data, 'include/datasets/stocks_info.csv')
 
-    # Definir dependências para upload dos arquivos CSV para o GCS
-    salvar_dados_csv_task >> upload_stockprice_csv_to_gcs
-    salvar_infos_csv_task >> upload_stockinfo_csv_to_gcs
+    # Define dependencies for uploading the CSV files to GCS
+    save_price_data_csv_task >> upload_stockprice_csv_to_gcs
+    save_info_data_csv_task >> upload_stockinfo_csv_to_gcs
 
-    # Cria o dataset no BigQuery e insere os dados
+    # Create the dataset in BigQuery and load the data
     create_stock_dataset >> [stocks_gcs_to_raw, companies_gcs_to_raw]
     upload_stockprice_csv_to_gcs >> stocks_gcs_to_raw
     upload_stockinfo_csv_to_gcs >> companies_gcs_to_raw
 
-    # Verificar qualidade dos dados após carregamento
+    # Check data quality after loading
     check_load_task = check_load()
     [stocks_gcs_to_raw, companies_gcs_to_raw] >> check_load_task
 
-    # Executar transformação
+    # Execute transformations
     check_load_task >> transform
     check_transform_task = check_transform()
     transform >> check_transform_task
 
-    # Criação de Data Marts
+    # Create Data Marts
     check_transform_task >> report
 
 stock_dag()
