@@ -1,0 +1,4 @@
+checks for report_stockprice_per_customer:
+  # Check fails if the Symbol column has any missing values
+  - missing_count(date) = 0:
+      name: All dates have a value
