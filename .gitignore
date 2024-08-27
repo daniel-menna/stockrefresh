@@ -10,4 +10,5 @@ webserver_config.py
 airflow.cfg
 airflow.db
 service_account.json
-include/datasets
+stocks_info.csv
+stocks.csv
