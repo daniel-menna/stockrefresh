@@ -28,8 +28,8 @@ def stock_dag():
         import subprocess
         subprocess.check_call([sys.executable, "-m", "pip", "install", "yfinance"])
 
-    @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python', execution_timeout=timedelta(minutes=10))
-    def fetch_commodities_data(symbol, period='30d', interval='1d'):
+    @task.external_python(python='/usr/local/airflow/pandas_venv/bin/python', execution_timeout=timedelta(minutes=30))
+    def fetch_commodities_data(symbol, period='3mo', interval='1d'):
         import yfinance as yf
         ticker = yf.Ticker(symbol)
         data = ticker.history(period=period, interval=interval)[['Open', 'Close']]

@@ -1,7 +1,7 @@
 -- Crie a tabela fato juntando as chaves relevantes da tabela de dimensão
 WITH fct_stock_cte AS (
     SELECT
-        simbolo AS company_id,
+        symbol AS company_id,
         CAST(Date AS STRING) AS datetime_id,
         Close as price
     FROM {{ source('stock', 'raw_stocks') }}

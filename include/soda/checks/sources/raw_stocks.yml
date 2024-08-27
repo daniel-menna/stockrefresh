@@ -1,9 +1,9 @@
 checks for raw_stocks:
   - schema:
       fail:
-        when required column missing: [Date,Open,Close,simbolo]
+        when required column missing: [Date,Open,Close,symbol]
         when wrong column type:
           Date: timestamp
           Open: float64
           Close: float64
-          simbolo: string
+          symbol: string
