@@ -5,8 +5,8 @@ checks for dim_locals:
           [company_id, lat, long]
         when wrong column type:
           company_id: string
-          lat: string
-          long: string
+          lat: float64
+          long: float64
   - duplicate_count(company_id) = 0:
       name: All companies are unique
   - missing_count(company_id) = 0:
