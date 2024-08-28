@@ -76,6 +76,15 @@ def stock_dag():
         mime_type='text/csv',
     )
 
+    upload_locals_csv_to_gcs = LocalFilesystemToGCSOperator(
+        task_id='upload_locals_csv_to_gcs',
+        src='include/datasets/locals.csv',
+        dst='raw/locals.csv',
+        bucket=bucket_name,
+        gcp_conn_id='gcp',
+        mime_type='text/csv',
+    )
+
     create_stock_dataset = BigQueryCreateEmptyDatasetOperator(
         task_id='create_stock_dataset',
         dataset_id='stock',
@@ -109,6 +118,24 @@ def stock_dag():
         ),
         output_table=Table(
             name='raw_companies',
+            conn_id='gcp',
+            metadata=Metadata(schema='stock')
+        ),
+        use_native_support=True,
+        native_support_kwargs={
+            "encoding": "ISO_8859_1",
+        }
+    )
+
+    locals_gcs_to_raw = aql.load_file(
+        task_id='locals_gcs_to_raw',
+        input_file=File(
+            f'gs://{bucket_name}/raw/locals.csv',
+            conn_id='gcp',
+            filetype=FileType.CSV,
+        ),
+        output_table=Table(
+            name='raw_locals',
             conn_id='gcp',
             metadata=Metadata(schema='stock')
         ),
@@ -168,16 +195,17 @@ def stock_dag():
 
     # Define dependencies for uploading the CSV files to GCS
     save_price_data_csv_task >> upload_stockprice_csv_to_gcs
-    save_info_data_csv_task >> upload_stockinfo_csv_to_gcs
+    save_info_data_csv_task >> upload_stockinfo_csv_to_gcs >> upload_locals_csv_to_gcs
+
 
     # Create the dataset in BigQuery and load the data
-    create_stock_dataset >> [stocks_gcs_to_raw, companies_gcs_to_raw]
-    upload_stockprice_csv_to_gcs >> stocks_gcs_to_raw
-    upload_stockinfo_csv_to_gcs >> companies_gcs_to_raw
+    [upload_stockprice_csv_to_gcs, upload_stockinfo_csv_to_gcs, upload_locals_csv_to_gcs] >> create_stock_dataset
+    create_stock_dataset >> [locals_gcs_to_raw, stocks_gcs_to_raw, companies_gcs_to_raw]
+
 
     # Check data quality after loading
     check_load_task = check_load()
-    [stocks_gcs_to_raw, companies_gcs_to_raw] >> check_load_task
+    [stocks_gcs_to_raw, companies_gcs_to_raw, locals_gcs_to_raw] >> check_load_task
 
     # Execute transformations
     check_load_task >> transform

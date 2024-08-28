@@ -7,3 +7,4 @@ sources:
     tables:
         - name: raw_stocks
         - name: raw_companies
+        - name: raw_locals

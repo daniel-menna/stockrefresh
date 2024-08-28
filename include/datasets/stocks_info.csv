@@ -1,12 +1,12 @@
 shortName,city,state,zip,country,industry,enterpriseValue,symbol
-Apple Inc.,Cupertino,CA,95014,United States,Consumer Electronics,3493578932224,AAPL
-Alphabet Inc.,Mountain View,CA,94043,United States,Internet Content & Information,1973423570944,GOOGL
-"Amazon.com, Inc.",Seattle,WA,98109-5210,United States,Internet Retail,1910722002944,AMZN
-"Meta Platforms, Inc.",Menlo Park,CA,94025,United States,Internet Content & Information,1298249154560,META
-Microsoft Corporation,Redmond,WA,98052-6399,United States,Software - Infrastructure,3095807918080,MSFT
-NVIDIA Corporation,Santa Clara,CA,95051,United States,Semiconductors,3090714984448,NVDA
-Dell Technologies Inc.,Round Rock,TX,78682,United States,Computer Hardware,99534995456,DELL
-SAP  SE,Walldorf,,69190,Germany,Software - Application,249144606720,SAP
-"Salesforce, Inc.",San Francisco,CA,94105,United States,Software - Application,252778315776,CRM
-Oracle Corporation,Austin,TX,78741,United States,Software - Infrastructure,467076939776,ORCL
-International Business Machines,Armonk,NY,10504,United States,Information Technology Services,228593926144,IBM
+Apple Inc.,Cupertino,CA,95014,United States,Consumer Electronics,3506502369280,AAPL
+Alphabet Inc.,Mountain View,CA,94043,United States,Internet Content & Information,1955204825088,GOOGL
+"Amazon.com, Inc.",Seattle,WA,98109-5210,United States,Internet Retail,1885742563328,AMZN
+"Meta Platforms, Inc.",Menlo Park,CA,94025,United States,Internet Content & Information,1293138919424,META
+Microsoft Corporation,Redmond,WA,98052-6399,United States,Software - Infrastructure,3098409697280,MSFT
+NVIDIA Corporation,Santa Clara,CA,95051,United States,Semiconductors,3135979126784,NVDA
+Dell Technologies Inc.,Round Rock,TX,78682,United States,Computer Hardware,99669762048,DELL
+SAP  SE,Walldorf,,69190,Germany,Software - Application,251442610176,SAP
+"Salesforce, Inc.",San Francisco,CA,94105,United States,Software - Application,251731804160,CRM
+Oracle Corporation,Austin,TX,78741,United States,Software - Infrastructure,465919508480,ORCL
+International Business Machines,Armonk,NY,10504,United States,Information Technology Services,229284773888,IBM

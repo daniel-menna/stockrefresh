@@ -1,0 +1,17 @@
+checks for dim_locals:
+  - schema:
+      fail:
+        when required column missing: 
+          [company_id, lat, long]
+        when wrong column type:
+          company_id: string
+          lat: string
+          long: string
+  - duplicate_count(company_id) = 0:
+      name: All companies are unique
+  - missing_count(company_id) = 0:
+      name: All companies have a key
+  - missing_count(lat) = 0:
+      name: All latituds have a value
+  - missing_count(long) = 0:
+      name: All longituds have a value

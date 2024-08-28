@@ -1,0 +1,7 @@
+checks for report_top_companies:
+  # Check fails if the Symbol column has any missing values
+  - missing_count(Symbol) = 0:
+      name: All companies have a Symbol
+  # Check fails if the total invoices is lower or equal to 0
+  - min(Value):
+      fail: when <= 0

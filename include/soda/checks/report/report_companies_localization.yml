@@ -1,0 +1,13 @@
+checks for report_companies_localization:
+  # Check fails if the Symbol column has any missing values
+  - missing_count(Symbol) = 0:
+      name: All companies have a Symbol
+  # Check fails if the value column has any missing values
+  - missing_count(Value) = 0:
+      name: All companies have a Valuation
+  # Check fails if the lat column has any missing values
+  - missing_count(latitud) = 0:
+      name: All companies have an address
+  # Check fails if the long column has any missing values
+  - missing_count(longitud) = 0:
+      name: All companies have an address
