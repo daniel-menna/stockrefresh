@@ -12,3 +12,4 @@ airflow.db
 service_account.json
 stocks_info.csv
 stocks.csv
+service_account.json
